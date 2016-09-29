@@ -1,5 +1,7 @@
 
 #include <string>
+#include <iostream>
+#include <fstream>
 
 #include "GlobalParameters.h"
 #include "MessageWraper.h"
@@ -9,6 +11,7 @@
 #ifndef __ShenAdapter
 #define __ShenAdapter
 
+int shen_cnt = 0;
 void SplitWithFlag(const char* str1,char c,std::vector<std::string>& arr)  
 {  
     std::stringstream ss(str1);  
@@ -48,6 +51,8 @@ public:
 			size_t n = _sock.reads(buff, EXHQ::MAX_MSG_LENGTH);
 			//printf("shen read [%d]\n", n);
 			analysis(buff, n);
+			// hear beat
+			_sock.writes(HEARTBEAT.getHeader(), HEARTBEAT.mem_size());
 		}
 		if(buff != NULL){
 			delete []buff;
@@ -74,7 +79,20 @@ public:
 		Binary::LPHead h = (Binary::LPHead)buff;
 		//printf("shen read type[%d], bodylength[%d], totalen[%d]\n", h->getType(), h->getBodyLength(), len);
 		printf("shen read type[%d], bodylength[%d], totalen[%d]\n", h->getType(), h->getBodyLength(), len);
-		fprintf(stdout, "%s\n", buff, len);
+		char bb[1024];
+		sprintf(bb, "./log/m%d.%d", h->getType(), shen_cnt++);
+		std::string ff(bb);
+		std::fstream fout(ff,std::ios::out|std::ios::binary);
+		if (!fout.is_open()){
+			printf("open error: %s\n", ff.c_str());
+		}
+		else{
+			fout.write(buff, len);
+			fout.close();
+		}
+		//fprintf(stdout, "%s\n", buff, len);
+		fprintf(stdout, "%s\n", buff);
+		return true;
 	}
 
 	const char* header(){

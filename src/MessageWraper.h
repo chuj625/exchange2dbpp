@@ -108,4 +108,25 @@ private:
 	Binary::LPChecksum ptail;
 };
 
+class HeartBeat: public ALLWraper
+{
+public:
+	HeartBeat()
+			:ALLWraper(sizeof(Binary::Head) + sizeof(Binary::End))
+	{
+		phead = (Binary::LPHead)_wraper;
+		phead->setType(3);
+		phead->setBodyLength(0);
+		ptail = (Binary::LPChecksum)phead->next;
+		ptail->setCheckSum(Binary::GenerateCheckSum(_wraper
+					, sizeof(Binary::Head)));
+	}
+
+private:
+	Binary::LPHead phead;
+	Binary::LPChecksum ptail;
+};
+
+static HeartBeat HEARTBEAT;
+
 #endif ///< __MessageWraper
