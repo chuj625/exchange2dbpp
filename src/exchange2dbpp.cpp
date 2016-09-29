@@ -31,11 +31,13 @@ void thread_shen(){
 void thread_hu(){
 	//string files = "/home/data/hanzhonghua/real_time_quotes/exchange2db/input/mktdt00.txt";
 	string files = "/home/data/hanzhonghua/real_time_quotes/tools/level1_hu/data/mktdt00.txt";
+	printf("hello\n");
 	HuAdapter hu(EXHQ::MAX_MSG_LENGTH);
 	if(!hu.init(files)){
 		fprintf(stderr, "open hu adapter error");
 		exit(-1);
 	}
+	printf("hello\n");
 	hu.read();
 }
 
@@ -47,14 +49,13 @@ int main(){
 
 	// client to get message
 	std::thread t_shen(thread_shen);
-	t_shen.join();
-
-	/*
 	std::thread t_hu(thread_hu);
+
+	EXHQ::broadcast_server_p->run(1986);
+	t_shen.join();
 	t_hu.join();
 	// */
 	
-	EXHQ::broadcast_server_p->run(1986);
 	return 0;
 }
 

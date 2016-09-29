@@ -22,6 +22,46 @@ void SplitWithFlag(const char* str1,char c,std::vector<std::string>& arr)
     }    
 }  
 
+void ana300111(char* res, char* bbuff){
+	char tbuf[1024];
+	Binary::LPSnapshot psnapshot = (Binary::LPSnapshot)bbuff;
+	//cout<< "origTime:\t" <<  psnapshot->origTime.get() <<endl;
+	//cout<< "channelNo:\t" << psnapshot->getChannelNo()<<endl;
+	psnapshot->getMDStreamID(tbuf);
+	//cout<< "mdStreamID:\t" << tbuf <<endl;
+	psnapshot->securityID.get(tbuf);
+	//cout<< "securityID:\t" << tbuf <<endl;
+	psnapshot->getSecurityIDSource(tbuf);
+	//cout<< "securityIDSource:\t" << tbuf <<endl;
+	psnapshot->getTradingPhaseCode(tbuf);
+	//cout<< "tradingPhaseCode:\t" << tbuf<<endl;
+	//cout<< "prevClosePx:\t" << psnapshot->prevClosePx.get()<<endl;
+	//cout<< "numTrades:\t"<< psnapshot->getNumTrades()<<endl;
+	//cout<< "totalVolumeTrade\t"<< psnapshot->totalVolumeTrade.get()<<endl;
+	//cout<< "totalValueTrade\t" << psnapshot->totalValueTrade.get()<<endl;
+	
+	Binary::LPSN300111 sn300111 = (Binary::LPSN300111)psnapshot->next;
+	uint32_t exnum = sn300111->getNoMDEntries();
+	Binary::LPSN300111Ext ext = sn300111->data;
+	for(uint32_t i =0; i< exnum; i++){
+		//cout << "******************************" <<endl;
+		ext->getMDEntryType(tbuf);
+		//cout << "**mdEntryType\t" << tbuf<<endl;
+		//cout << "**mdEntryPx\t" << ext->getMDEntryPx()<<endl;
+		//cout << "**mdEntrySize\t"<< ext->mdEntrySize.get()<<endl;
+		//cout << "**mdPriceLevel\t"<< ext->getMDPriceLevel()<<endl;
+		//cout << "**numberOfOrders\t"<<ext->getNumberOfOrders()<<endl;
+		uint32_t noOrders = ext->noOrders.get();
+		//cout << "**noOrders\t" << noOrders<<endl;
+		for(uint32_t j = 0; j<noOrders; ++j){
+			//cout << "------------------------------"<<endl;
+			//cout<< "----orderQty:\t" <<  ext->orderQty[j].get()<<endl;
+		}
+		// TODO next ext
+		ext = (Binary::LPSN300111Ext)((char*)ext+ sizeof(Binary::SN300111Ext) + sizeof(Binary::Qty)*noOrders);
+	}
+}
+
 class ShenAdapter: public AdapterEX
 {
 public:
@@ -47,6 +87,7 @@ public:
 
 	int read(){
 		char* buff = new char[EXHQ::MAX_MSG_LENGTH];
+		char* obuf = new char[EXHQ::MAX_MSG_LENGTH];
 		while(true){
 			size_t n = _sock.reads(buff, EXHQ::MAX_MSG_LENGTH);
 			//printf("shen read [%d]\n", n);
@@ -56,6 +97,9 @@ public:
 		}
 		if(buff != NULL){
 			delete []buff;
+		}
+		if(obuf != NULL){
+			delete []obuf;
 		}
 	}
 
