@@ -7,6 +7,7 @@
 #include "MessageWraper.h"
 #include "AdapterEX.h"
 #include "SocketDF.h"
+#include "RealTimeCell.h"
 
 #ifndef __ShenAdapter
 #define __ShenAdapter
@@ -22,23 +23,33 @@ void SplitWithFlag(const char* str1,char c,std::vector<std::string>& arr)
     }    
 }  
 
-void ana300111(char* res, char* bbuff){
+void ana300111(std::string& outs, char* bbuff){
+	RealTimeCell rtc;
 	char tbuf[1024];
 	Binary::LPSnapshot psnapshot = (Binary::LPSnapshot)bbuff;
+	std::string dt = psnapshot->origTime.get();
+	rtc.set_tim(dt.substr(8,6).c_str());
+	rtc.set_dat(dt.substr(0,8).c_str());
+	rtc.to_next();
 	//cout<< "origTime:\t" <<  psnapshot->origTime.get() <<endl;
 	//cout<< "channelNo:\t" << psnapshot->getChannelNo()<<endl;
 	psnapshot->getMDStreamID(tbuf);
 	//cout<< "mdStreamID:\t" << tbuf <<endl;
 	psnapshot->securityID.get(tbuf);
+	rtc.set_id(tbuf);
 	//cout<< "securityID:\t" << tbuf <<endl;
 	psnapshot->getSecurityIDSource(tbuf);
 	//cout<< "securityIDSource:\t" << tbuf <<endl;
 	psnapshot->getTradingPhaseCode(tbuf);
 	//cout<< "tradingPhaseCode:\t" << tbuf<<endl;
 	//cout<< "prevClosePx:\t" << psnapshot->prevClosePx.get()<<endl;
+	rtc.set_pre_close_price(psnapshot->prevClosePx.get());
 	//cout<< "numTrades:\t"<< psnapshot->getNumTrades()<<endl;
+	rtc.set_transactions(psnapshot->getNumTrades());
 	//cout<< "totalVolumeTrade\t"<< psnapshot->totalVolumeTrade.get()<<endl;
+	rtc.set_volume(psnapshot->totalVolumeTrade.get());
 	//cout<< "totalValueTrade\t" << psnapshot->totalValueTrade.get()<<endl;
+	rtc.set_money(psnapshot->totalValueTrade.get());
 	
 	Binary::LPSN300111 sn300111 = (Binary::LPSN300111)psnapshot->next;
 	uint32_t exnum = sn300111->getNoMDEntries();
@@ -46,6 +57,73 @@ void ana300111(char* res, char* bbuff){
 	for(uint32_t i =0; i< exnum; i++){
 		//cout << "******************************" <<endl;
 		ext->getMDEntryType(tbuf);
+		switch(tbuf[0])
+		{
+		case '0':	///< buy
+			switch(ext->getMDPriceLevel()){
+				case 1:
+					rtc.set_buy_price1(ext->getMDEntryPx());
+					rtc.set_buy_volume1(ext->mdEntrySize.get());
+					break;
+				case 2:
+					rtc.set_buy_price2(ext->getMDEntryPx());
+					rtc.set_buy_volume2(ext->mdEntrySize.get());
+					break;
+				case 3:
+					rtc.set_buy_price3(ext->getMDEntryPx());
+					rtc.set_buy_volume3(ext->mdEntrySize.get());
+					break;
+				case 4:
+					rtc.set_buy_price4(ext->getMDEntryPx());
+					rtc.set_buy_volume4(ext->mdEntrySize.get());
+					break;
+				case 5:
+					rtc.set_buy_price5(ext->getMDEntryPx());
+					rtc.set_buy_volume5(ext->mdEntrySize.get());
+					break;
+			}
+			break;
+		case '1':	///< sell
+			switch(ext->getMDPriceLevel()){
+				case 1:
+					rtc.set_sell_price1(ext->getMDEntryPx());
+					rtc.set_sell_volume1(ext->mdEntrySize.get());
+					break;
+				case 2:
+					rtc.set_sell_price2(ext->getMDEntryPx());
+					rtc.set_sell_volume2(ext->mdEntrySize.get());
+					break;
+				case 3:
+					rtc.set_sell_price3(ext->getMDEntryPx());
+					rtc.set_sell_volume3(ext->mdEntrySize.get());
+					break;
+				case 4:
+					rtc.set_sell_price4(ext->getMDEntryPx());
+					rtc.set_sell_volume4(ext->mdEntrySize.get());
+					break;
+				case 5:
+					rtc.set_sell_price5(ext->getMDEntryPx());
+					rtc.set_sell_volume5(ext->mdEntrySize.get());
+					break;
+			}
+			
+			break;
+		case '2':
+			rtc.set_newest_price(ext->getMDEntryPx());
+			break;
+		case '4':
+			rtc.set_open_price(ext->getMDEntryPx());
+			break;
+		case '7':
+			rtc.set_high(ext->getMDEntryPx());
+			break;
+		case '8':
+			rtc.set_low(ext->getMDEntryPx());
+			break;
+		case 'x':
+		default:
+			break;
+		}
 		//cout << "**mdEntryType\t" << tbuf<<endl;
 		//cout << "**mdEntryPx\t" << ext->getMDEntryPx()<<endl;
 		//cout << "**mdEntrySize\t"<< ext->mdEntrySize.get()<<endl;
@@ -60,6 +138,7 @@ void ana300111(char* res, char* bbuff){
 		// TODO next ext
 		ext = (Binary::LPSN300111Ext)((char*)ext+ sizeof(Binary::SN300111Ext) + sizeof(Binary::Qty)*noOrders);
 	}
+	rtc.to_string(outs);
 }
 
 class ShenAdapter: public AdapterEX
@@ -88,10 +167,12 @@ public:
 	int read(){
 		char* buff = new char[EXHQ::MAX_MSG_LENGTH];
 		char* obuf = new char[EXHQ::MAX_MSG_LENGTH];
+		std::string outs;
 		while(true){
 			size_t n = _sock.reads(buff, EXHQ::MAX_MSG_LENGTH);
 			//printf("shen read [%d]\n", n);
-			analysis(buff, n);
+			analysis(outs, buff, n);
+			EXHQ::broadcast_server_p->process_messages(outs);
 			// hear beat
 			_sock.writes(HEARTBEAT.getHeader(), HEARTBEAT.mem_size());
 		}
@@ -103,7 +184,7 @@ public:
 		}
 	}
 
-	bool analysis(char* buff, size_t len){
+	bool analysis(std::string& outs, char* buff, size_t len){
 		/**
 		 * MsgTyp
 		 * 1: 登录消息
@@ -123,6 +204,12 @@ public:
 		Binary::LPHead h = (Binary::LPHead)buff;
 		//printf("shen read type[%d], bodylength[%d], totalen[%d]\n", h->getType(), h->getBodyLength(), len);
 		printf("shen read type[%d], bodylength[%d], totalen[%d]\n", h->getType(), h->getBodyLength(), len);
+		if(h->getType() != 300111){
+			return false;
+		}
+		ana300111(outs, h->next);
+		EXHQ::broadcast_server_p->process_messages(outs);
+		/*
 		char bb[1024];
 		sprintf(bb, "./log/m%d.%d", h->getType(), shen_cnt++);
 		std::string ff(bb);
@@ -136,6 +223,7 @@ public:
 		}
 		//fprintf(stdout, "%s\n", buff, len);
 		fprintf(stdout, "%s\n", buff);
+		// */
 		return true;
 	}
 
