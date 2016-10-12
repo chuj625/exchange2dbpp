@@ -1,7 +1,7 @@
 
 #include <string>
 #include <fstream>
-#include<cstdio>
+#include <cstdio>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -16,30 +16,8 @@
 #define __HuAdapter
 
 
-bool return_until_it_changed(long& last_time, const std::string& ff){
-	long cur;
-	int fd;
-	struct stat buf;
-	while(true){
-		FILE * fp;
-		fp = fopen(ff.c_str(), "r");
-		fd = fileno(fp);
-		fstat(fd, &buf);
-		cur = buf.st_mtime;
-		fclose(fp);
-		if(last_time == cur){
-			usleep(1000);			///< 微秒
-		}
-		else{
-			printf("curtime [%ld], last_time [%ld]\n", cur, last_time);
-			break;
-		}
-	}
-	last_time = cur;
-	return true;
-}
 
-void analysis(std::string outs, const char* buff, size_t len){
+void analysis(std::string& outs, const char* buff, size_t len){
 	//stringstream stream(buff);
 	std::istringstream input(buff);
 	std::string line;
@@ -57,6 +35,8 @@ void analysis(std::string outs, const char* buff, size_t len){
 	RealTimeCell rtc;
 	rtc.set_tim(tim.c_str());
 	rtc.set_dat(dat.c_str());
+	rtc.set_src("shang");
+	rtc.set_typ("company");
 
 	std::vector<std::string> res;
 	while(std::getline(input, line)){
@@ -101,6 +81,8 @@ void analysis(std::string outs, const char* buff, size_t len){
 		rtc.set_sell_price5(atof(res[29].c_str()));		///< 29
 		rtc.set_sell_volume5(atoi(res[30].c_str()));	///< 30
 		rtc.set_status(res[31].c_str());				///< 31
+		string cid = EXHQ::IDCache_p->get_company_id(res[1]);
+		rtc.set_company_id(cid.c_str());				///< ticker
 	}
 	rtc.to_string(outs);
 }
@@ -120,31 +102,61 @@ public:
 	}
 	bool init(std::string& file_path){
 		_file = file_path;
-		_cmd = std::string("rm ") + _file;
+		//_cmd = std::string("rm ") + _file;
 		return true;
 	}
 
+	long return_until_it_changed(long last_time, const std::string& ff){
+		long cur;
+		int fd;
+		struct stat buf;
+		while(true){
+			FILE * fp;
+			fp = fopen(ff.c_str(), "r");
+			fd = fileno(fp);
+			fstat(fd, &buf);
+			cur = buf.st_mtime;
+			fclose(fp);
+			if(last_time == cur){
+				usleep(hu_file_check_interval);			///< 微秒
+			}
+			else{
+				usleep(hu_file_read_waitime);			///< 微秒，不能低于100
+				printf("curtime [%ld], last_time [%ld]\n", cur, last_time);
+				break;
+			}
+		}
+		return cur;
+		//last_time = cur;
+		//return true;
+	}
 	int read(){
 		/**
 		 * 检测文件_file，如果存在则处理，处理完成后删除
 		 **/
 		int num = 0;
 		long last_time = 0;
+		long cur = 0;
 		std::string outs = "";
 		while(true){
 			outs.clear();
-			printf("check files %s\n", _file.c_str());
-			return_until_it_changed(last_time, _file);
+			cur = return_until_it_changed(last_time, _file);
 			printf("file changed %s\n", _file.c_str());
 			std::ifstream fin(_file, std::ios::in);
 			if(fin.is_open()){
 				// 读文件内容
+				_buff[0] = '\0';
 				fin.read(_buff, _max);
 				num = strlen(_buff);
 				//_buff[20] = '\0';
 				//printf("buff:[%s]\n", _buff);
 				//printf("buff len:[%d],max[%d], buff size[%d] [%s]\n", num, _max, sizeof(_buff), _buff);
 				printf("buff len:[%d],max[%d], buff size[%d]\n", num, _max, sizeof(_buff));
+				if(num == 0){
+					printf("ERROR fetch file failed\n");
+					usleep(hu_file_read_waitime);		///< 微秒
+					continue;
+				}
 				analysis(outs, _buff, num);
 				EXHQ::broadcast_server_p->process_messages(outs);
 				fin.close();
@@ -152,15 +164,27 @@ public:
 			else{
 				usleep(EXHQ::FILE_CHECK_INTERVAL);		///< 微秒
 			}
+			last_time = cur;
 		}
 		return num;
 	}
 
+	void set_hu_file_check_interval(int tt){
+		hu_file_check_interval = tt;
+	}
+
+	void set_hu_file_read_waitime(int tt){
+		hu_file_read_waitime = tt;
+	}
+
 private:
 	std::string _file;			///< 文件路径
-	std::string _cmd;			///< rm _file
+	//std::string _cmd;			///< rm _file
 	char* _buff;
 	size_t _max;
+
+	int hu_file_check_interval;	///< 检查文件间隔
+	int hu_file_read_waitime;	///< 读文件前等待一定时间
 };
 
 

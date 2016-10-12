@@ -14,6 +14,7 @@ class RealTimeCell{
 	
 	public:
 		json result;  //存放解析完毕的json结果
+		char buff[128];		// buff
 	
 	public:
 		void to_next();  //初始化一个数组，存放一条数据
@@ -23,11 +24,25 @@ class RealTimeCell{
 			result["typ"]=ss;
 		}
 		void set_tim(const char* ss){         //存放tim
-			result["tim"]=ss;
+			memcpy(buff, ss, 2);
+			memcpy(buff+3, ss + 2, 2);
+			memcpy(buff+6, ss + 4, 2);
+			buff[2] = buff[5] = ':';
+			buff[8] = '\0';
+			result["tim"]=buff;
 		}
 		void set_dat(const char* ss){         //存放dat
-			result["dat"]=ss;
+			memcpy(buff, ss, 4);		///< YYYY
+			memcpy(buff+5, ss+4, 2);	///< MM
+			memcpy(buff+8, ss+6, 2);	///< DD
+			buff[4] = buff[7] = '-';
+			buff[10] = '\0';
+			result["dat"]=buff;
 		}
+		void set_src(const char* src){
+			result["src"] = src;
+		}
+
 		void set_id(const char* ss){          					//0,产品代码 
 			result["res"][result["res"].size()-1][0]=ss;
 		}

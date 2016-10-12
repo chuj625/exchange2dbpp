@@ -36,10 +36,12 @@ CC = g++
 #------------------------------------------------------------
 LIB_DIR = lib
 FOO_DIR = src
+GEN_CPP_DIR = src/gen-cpp
 OTHER_LIB_DIR = /home/data/hanzhonghua/real_time_quotes/exchange2db/tools/websocketpp
+THRIFT_INCLUDE = /usr/include/thrift
 
-CFLAGS = -std=c++11 -pthread -I $(LIB_DIR) -Wall -lboost_system -lboost_thread -I $(OTHER_LIB_DIR) -pg
-LIBS = -lpthread -lboost_system -lboost_thread
+CFLAGS = -std=c++11 -pthread -I $(LIB_DIR) -I $(GEN_CPP_DIR) -I $(THRIFT_INCLUDE) -Wall -lboost_system -lboost_thread -I $(OTHER_LIB_DIR) -pg -lthrift -lrt -DHAVE_NETINET_IN_H
+LIBS = -lpthread -lboost_system -lboost_thread -lthrift -lrt
 
 #------------------------------------------------------------
 # 所有的 .o 文件都放到这个根目录下
@@ -61,7 +63,7 @@ all: $(BINS)
 # EXCLUDE_CPPS = $(wildcard $(FOO_DIR)/*useless.cpp)
 # CPPS = $(filter-out $(EXCLUDE_CPPS), $(CPPS))
 #------------------------------------------------------------
-CPPS = $(wildcard $(LIB_DIR)/*.cpp) $(wildcard $(FOO_DIR)/*.cpp)
+CPPS = $(wildcard $(LIB_DIR)/*.cpp) $(wildcard $(FOO_DIR)/*.cpp) $(wildcard $(GEN_CPP_DIR)/*cpp)
 
 # 一个不错的 debug 手段，会将 CPPS 包含的内容打印出来
 $(info CPPS is ${CPPS})

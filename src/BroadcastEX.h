@@ -57,12 +57,13 @@ public:
     }
 
     void on_open(connection_hdl hdl) {
-		;
 		//TODO do nothing
+		fprintf(stderr, "register []\n");
+		m_connections.insert(hdl);
 		/*
         {
             lock_guard<mutex> guard(m_action_lock);
-            //std::cout << "on_open" << std::endl;
+            std::cout << "on_open" << std::endl;
             m_actions.push(action(SUBSCRIBE,hdl));
         }
         m_action_cond.notify_one();
@@ -70,12 +71,12 @@ public:
     }
 
     void on_close(connection_hdl hdl) {
-		;
-		//TODO do nothing
+		fprintf(stderr, "unregister []\n");
+		m_connections.erase(hdl);
 		/*
         {
             lock_guard<mutex> guard(m_action_lock);
-            //std::cout << "on_close" << std::endl;
+            std::cout << "on_close" << std::endl;
             m_actions.push(action(UNSUBSCRIBE,hdl));
         }
         m_action_cond.notify_one();
@@ -83,24 +84,20 @@ public:
     }
 
     void on_message(connection_hdl hdl, server::message_ptr msg) {
-		;
         // queue message up for sending by processing thread
 		/*TODO do nothing
-        {
-            lock_guard<mutex> guard(m_action_lock);
-            //std::cout << "on_message" << std::endl;
-            m_actions.push(action(MESSAGE,hdl,msg));
-        }
-        m_action_cond.notify_one();
 		// */
     }
 
     void process_messages(const std::string& msg) {
-		//std::cerr<<"broadcast msg len:" << msg.size()<<std::endl;
-		fprintf(stderr, "char HQBroadcast msg len: %d", msg.size());
+		fprintf(stderr, "char HQBroadcast msg len: %d conn size %d, msg[%s]\n", msg.size(), m_connections.size(), msg.c_str());
 		con_list::iterator it;
-		for(it = m_connections.begin(); it != m_connections.end(); ++it){
-			m_server.send(*it, msg, websocketpp::frame::opcode::text);
+		try{
+			for(it = m_connections.begin(); it != m_connections.end(); ++it){
+				m_server.send(*it, msg, websocketpp::frame::opcode::text);
+			}
+		}catch(websocketpp::exception const & e){
+			std::cerr<< e.what() << std::endl;
 		}
     }
 

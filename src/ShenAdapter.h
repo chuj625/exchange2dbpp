@@ -30,6 +30,8 @@ void ana300111(std::string& outs, char* bbuff){
 	std::string dt = psnapshot->origTime.get();
 	rtc.set_tim(dt.substr(8,6).c_str());
 	rtc.set_dat(dt.substr(0,8).c_str());
+	rtc.set_src("shen");
+	rtc.set_typ("company");
 	rtc.to_next();
 	//cout<< "origTime:\t" <<  psnapshot->origTime.get() <<endl;
 	//cout<< "channelNo:\t" << psnapshot->getChannelNo()<<endl;
@@ -37,6 +39,9 @@ void ana300111(std::string& outs, char* bbuff){
 	//cout<< "mdStreamID:\t" << tbuf <<endl;
 	psnapshot->securityID.get(tbuf);
 	rtc.set_id(tbuf);
+	string ticker(tbuf);
+	string df = EXHQ::IDCache_p->get_company_id(ticker);
+	rtc.set_company_id(df.c_str());
 	//cout<< "securityID:\t" << tbuf <<endl;
 	psnapshot->getSecurityIDSource(tbuf);
 	//cout<< "securityIDSource:\t" << tbuf <<endl;
@@ -203,7 +208,6 @@ public:
 		 **/
 		Binary::LPHead h = (Binary::LPHead)buff;
 		//printf("shen read type[%d], bodylength[%d], totalen[%d]\n", h->getType(), h->getBodyLength(), len);
-		printf("shen read type[%d], bodylength[%d], totalen[%d]\n", h->getType(), h->getBodyLength(), len);
 		if(h->getType() != 300111){
 			return false;
 		}

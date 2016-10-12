@@ -1,0 +1,9 @@
+{
+"hu_file": "/home/data/hanzhonghua/real_time_quotes/tools/level1_hu/data/mktdt00.txt"
+, "hu_file_check_interval":2000
+, "hu_file_read_waitime":1000
+, "shen_ip_port": "127.0.0.1:9898"
+, "idcache_ip": "192.168.2.7"
+, "idcache_port":7777
+, "broadcast_port": 1986
+}
