@@ -91,6 +91,10 @@ public:
 
     void process_messages(const std::string& msg) {
 		fprintf(stderr, "char HQBroadcast msg len: %d conn size %d, msg[%s]\n", msg.size(), m_connections.size(), msg.c_str());
+		if(msg.size() == 0){
+			// TODO do nothing
+			return;
+		}
 		con_list::iterator it;
 		try{
 			for(it = m_connections.begin(); it != m_connections.end(); ++it){

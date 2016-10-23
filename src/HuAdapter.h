@@ -36,7 +36,7 @@ void analysis(std::string& outs, const char* buff, size_t len){
 	rtc.set_tim(tim.c_str());
 	rtc.set_dat(dat.c_str());
 	rtc.set_src("shang");
-	rtc.set_typ("company");
+	rtc.set_typ("rt");
 
 	std::vector<std::string> res;
 	while(std::getline(input, line)){

@@ -31,7 +31,7 @@ void ana300111(std::string& outs, char* bbuff){
 	rtc.set_tim(dt.substr(8,6).c_str());
 	rtc.set_dat(dt.substr(0,8).c_str());
 	rtc.set_src("shen");
-	rtc.set_typ("company");
+	rtc.set_typ("rt");
 	rtc.to_next();
 	//cout<< "origTime:\t" <<  psnapshot->origTime.get() <<endl;
 	//cout<< "channelNo:\t" << psnapshot->getChannelNo()<<endl;
